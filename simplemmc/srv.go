@@ -49,7 +49,7 @@ func fullHandler(h Handler) memcache.Handler {
 		case "get", "gets":
 			if len(req.Args) == 0 {
 				resp.ClientError("key required")
-				return
+				return nil
 			}
 			if req.Command == "get" {
 				req.Args = req.Args[:1]
@@ -60,8 +60,8 @@ func fullHandler(h Handler) memcache.Handler {
 				if err == ErrNotFound {
 					// do nothing
 				} else if err != nil {
-					resp.ServerError(err.Error())
-					return
+					resp.ClientError(err.Error())
+					return nil
 				} else {
 					resp.Value(key, data)
 				}
@@ -71,7 +71,7 @@ func fullHandler(h Handler) memcache.Handler {
 		case "set", "add", "replace":
 			if len(req.Args) < 4 {
 				resp.ClientError("invalid command format")
-				return
+				return nil
 			}
 
 			noreply := len(req.Args) == 5 && req.Args[4] == "noreply"
@@ -81,14 +81,14 @@ func fullHandler(h Handler) memcache.Handler {
 				if !noreply {
 					resp.ClientError("invalid data length")
 				}
-				return
+				return nil
 			}
 			body, err := req.ReadBody(bodyLen)
 			if err != nil {
 				if !noreply {
-					resp.ServerError(err.Error())
+					resp.ClientError(err.Error())
 				}
-				return
+				return nil
 			}
 
 			var mode SetMode
@@ -106,7 +106,7 @@ func fullHandler(h Handler) memcache.Handler {
 				if err == ErrNotStored || err == ErrNotFound || err == ErrExists {
 					resp.Status(err.Error())
 				} else if err != nil {
-					resp.ServerError(err.Error())
+					resp.ClientError(err.Error())
 				} else {
 					resp.Status("STORED")
 				}
@@ -115,7 +115,7 @@ func fullHandler(h Handler) memcache.Handler {
 		case "del":
 			if len(req.Args) < 1 {
 				resp.ClientError("invalid command format")
-				return
+				return nil
 			}
 
 			noreply := len(req.Args) == 2 && req.Args[1] == "noreply"
@@ -125,14 +125,14 @@ func fullHandler(h Handler) memcache.Handler {
 				if err == ErrNotFound {
 					resp.Status(err.Error())
 				} else if err != nil {
-					resp.ServerError(err.Error())
+					resp.ClientError(err.Error())
 				} else {
 					resp.Status("DELETED")
 				}
 			}
 
 		case "version":
-			resp.Status("VERSION " + MemcacheVersion)
+			resp.Status("VERSION 1.0.0")
 
 		case "quit":
 			return memcache.ErrCloseConnection
@@ -140,5 +140,7 @@ func fullHandler(h Handler) memcache.Handler {
 		default:
 			resp.UnknownCommandError()
 		}
+
+		return nil
 	})
 }
